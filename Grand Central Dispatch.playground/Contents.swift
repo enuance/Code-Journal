@@ -23,6 +23,8 @@ class PhotoViewController: UIViewController {
     @IBOutlet weak var photoView: UIImageView!
     //A Spinner to show when the app is retrieving.
     @IBOutlet weak var spinner: UIActivityIndicatorView!
+    //A data validating property for last example.
+    var lastPressedButton: UIButton? = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,8 +41,8 @@ class PhotoViewController: UIViewController {
         //Place the code that blocks the main queue onto a concurrent queue so that the UI can remain
         //responsive. Grab a reusable queue by calling DispatchQueue.global. This take a quality of 
         //service argument which provides a prioritization for code to be completed. Then state whether
-        //the queue should be executed in a FIFO ordered (synchronous) or unordered (asynchronous) manner.
-        //The code in the trailing closure is then assigned to and executed on that queue.
+        //the queue should be executed in a serialized (synchronous) or immediately executed (asynchronous)
+        //manner.The code in the trailing closure is then assigned to and executed on that queue.
         DispatchQueue.global(qos: .userInteractive).async {
             //Unwrap the optionals for use.
             if let url = URL(string: SampleImages.tulips.rawValue){
@@ -66,17 +68,23 @@ class PhotoViewController: UIViewController {
         }
     }
     
-    
-    //A Method to show multi-threading with created queues.
+    //A Method to show multi-threading with created queues. Creating your own queue rather than utiliziing
+    //an existing queue can provide greater flexibility of use. For example you can suspend or resume your
+    //created queue. In general it's implemented quitesimilarly.
     @IBAction func downloadWithCreatedQueue(_ sender: UIButton) {
         //Activate the spinner
         spinner.startAnimating()
+        //Declare a queue to be created.
         let createdQueue = DispatchQueue(label: "MyCreatedQueue")
+        //Asign your queue as a synchronous or asynchronous and place the code in the the closure.
         createdQueue.async {
+            //Unwrap your properties for use.
             if let url = URL(string: SampleImages.monarch.rawValue){
                 let imageData = try? Data(contentsOf: url)
                 if let imageData = imageData{
+                    //UIImage is "thread-safe" but for the most part keep View objects on the main queue!
                     let image = UIImage(data: imageData)
+                    //Call the main queue and update your View with the retrieved data.
                     DispatchQueue.main.async {
                         self.spinner.stopAnimating()
                         self.photoView.image = image
@@ -87,5 +95,43 @@ class PhotoViewController: UIViewController {
     }
     
     
+    //Sometimes a user may change their mind while waiting for the image to return. If they select another
+    //image while waiting in the previous examples, then the user may experience a flutter, back and forth
+    //between images as they are both brought back to the view. To prevent this, you can create some
+    //property that can be checked in order to validate the returned data before it updates the view.
+    @IBAction func downloadAndCheck(_ sender: UIButton){
+        //Assigning a value to validate against before the view is updated.
+        lastPressedButton = sender
+        spinner.startAnimating()
+        var url: URL? = nil
+        //This example assumes three buttons connected to this method.
+        switch sender.titleLabel!.text!{
+        case "Tulips": url = URL(string: SampleImages.tulips.rawValue)
+        case "Lizard": url = URL(string: SampleImages.retroLiz.rawValue)
+        case "Monarch": url = URL(string: SampleImages.monarch.rawValue)
+        default: break
+        }
+        //Everything is the same as previous examples except for the line after main thread call.
+        DispatchQueue.global(qos: .userInteractive).async {
+            if let url = url{
+                let imageData = try? Data(contentsOf: url)
+                if let imageData = imageData{
+                    let image = UIImage(data: imageData)
+                    DispatchQueue.main.async {
+                        //Checks to see if the user has selected another button before we came back from background.
+                        if sender == self.lastPressedButton{
+                            //If the data we have coincides with the last button pressed then proceed to update view
+                            self.spinner.stopAnimating()
+                            self.photoView.image = image
+                        }else{
+                            //Otherwise we ignore the data brought in order to allow the latest background thread to
+                            //update the view.
+                            print("Image ignored due to selection change")
+                        }
+                    }
+                }
+            }
+        }
+    }
     
 }
