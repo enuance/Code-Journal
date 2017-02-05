@@ -9,7 +9,7 @@ import UIKit
 
 class NetRetrievalViewController: UIViewController{
     //An Outlet to the view for an image.
-    @IBOutlet weak var webImage: UIImageView!
+    @IBOutlet weak var photoImageView: UIImageView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -32,7 +32,7 @@ class NetRetrievalViewController: UIViewController{
                 let downLoadedCatImage = UIImage(data: data!)
                 //After capturing the resource we can then call the main thread and update the View.
                 DispatchQueue.main.async {
-                    self.webImage.image = downLoadedCatImage
+                    self.photoImageView.image = downLoadedCatImage
                 }
             }
         }
@@ -40,46 +40,15 @@ class NetRetrievalViewController: UIViewController{
         //for it to proceede as declared.
         networkingTask.resume()
     }
-    
-    
-    
-    //Unordered due to Dictionary type parameter
-    func escapedParameters(_ parameters: [String : Any]) -> String {
-        if parameters.isEmpty{return ""}else{
-            var keyValuePairs = [String]()
-            for (key, valueToConvert) in parameters{
-                let value = "\(valueToConvert)"
-                let escapedValue = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-                keyValuePairs.append(key + "=" + "\(escapedValue!)")
-            }
-            return "?\(keyValuePairs.joined(separator: "&"))"
-        }
-    }
-    
-    //Ordered using a tuple type parameter in an array
-    func myEscapedParameters(_ parameters: [(key: String, value: Any)]) -> String{
-        if parameters.isEmpty{return ""}else{
-            var keyValuePairs = [String]()
-            for keyValueTuple in parameters{
-                let value = "\(keyValueTuple.value)"
-                let escapedValue = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-                keyValuePairs.append(keyValueTuple.key + "=" + "\(escapedValue!)")
-            }
-            return "?\(keyValuePairs.joined(separator: "&"))"
-        }
-    }
-    
 }
 
-//...................................................................................................
-///Note to self: Need to comment through the rest of this code and clean up for future reference.
-//...................................................................................................
+//Here's another example of a viewcontroller that accesses the Flickr API (using JSON) to bring back various photo's
+class FlickerViewerController: UIViewController {
 
-class ViewController: UIViewController {
-
-    @IBOutlet weak var photoImageView: UIImageView!
-    @IBOutlet weak var photoTitleLabel: UILabel!
-    @IBOutlet weak var grabImageButton: UIButton!
+    //Outlets
+    @IBOutlet weak var flickrImageView: UIImageView!
+    @IBOutlet weak var flickrTitleLabel: UILabel!
+    @IBOutlet weak var getImageButton: UIButton!
     
     @IBAction func grabNewImage(_ sender: AnyObject) {
         setUIEnabled(false)
@@ -87,10 +56,10 @@ class ViewController: UIViewController {
     }
     
     private func setUIEnabled(_ enabled: Bool) {
-        photoTitleLabel.isEnabled = enabled
-        grabImageButton.isEnabled = enabled
-        if enabled { grabImageButton.alpha = 1.0}
-        else { grabImageButton.alpha = 0.5}
+        flickrTitleLabel.isEnabled = enabled
+        getImageButton.isEnabled = enabled
+        if enabled { getImageButton.alpha = 1.0}
+        else { getImageButton.alpha = 0.5}
     }
     
     private func getImageFromFlickr() {
@@ -139,8 +108,8 @@ class ViewController: UIViewController {
             
             if let imageData = try? Data(contentsOf: imageURL!){
                 DispatchQueue.main.async {
-                    self.photoImageView.image = UIImage(data: imageData)
-                    self.photoTitleLabel.text = imageTitle
+                    self.flickrImageView.image = UIImage(data: imageData)
+                    self.flickrTitleLabel.text = imageTitle
                     self.setUIEnabled(true)
                 }
             }
