@@ -45,24 +45,28 @@ class NetRetrievalViewController: UIViewController{
 //Here's another example of a viewcontroller that accesses the Flickr API (using JSON) to bring back various photo's
 class FlickerViewerController: UIViewController {
 
-    //Outlets
+    //Outlets for updating the view with the images retrieved, their titles and a button to disable when working.
     @IBOutlet weak var flickrImageView: UIImageView!
     @IBOutlet weak var flickrTitleLabel: UILabel!
     @IBOutlet weak var getImageButton: UIButton!
     
+    //Get the Flickr image and disable the button until retireved.
     @IBAction func grabNewImage(_ sender: AnyObject) {
-        setUIEnabled(false)
+        isUIEnabled(false)
         getImageFromFlickr()
     }
     
-    private func setUIEnabled(_ enabled: Bool) {
+    //Helper method to configure UI element enablement.
+    func isUIEnabled(_ enabled: Bool) {
         flickrTitleLabel.isEnabled = enabled
         getImageButton.isEnabled = enabled
         if enabled { getImageButton.alpha = 1.0}
         else { getImageButton.alpha = 0.5}
     }
     
-    private func getImageFromFlickr() {
+    //Method for gets a random image from the Flickr API.
+    func getImageFromFlickr() {
+        //Puts the Method parameter into an Array of tuples to be joined later into one final API method call
         let methodParameters: [(String, Any)] = [
             ("method", /*...............*/"flickr.galleries.getPhotos"),
             ("api_key", /*..............*/"9215bde.........rest of your key here"),
@@ -74,15 +78,17 @@ class FlickerViewerController: UIViewController {
         
         let urlString = "https://api.flickr.com/services/rest/" + myEscapedParameters(methodParameters)
         let url = URL(string: urlString)!
-        let request = URLRequest(url: url)
         //Use NSMutableURL(_:) instead of URLRequest(_:)in order to change the request.httpMethod type from get to something
         //else, otherwise default is "Get"
-        let task = URLSession.shared.dataTask(with: request){ (data, status, error) in
-            // if an error occurs, print it and re-enable the UI
+        let request = URLRequest(url: url)
+        
+        let task = URLSession.shared.dataTask(with: request){ (data, status, error) in //Closure begins here
+            // Method for displaying errors thoughout the URL Session
             func displayError(_ error: String) {
                 print(error); print("URL at time of error: \(url)")
-                DispatchQueue.main.async { self.setUIEnabled(true) }
+                DispatchQueue.main.async { self.isUIEnabled(true) }
             }
+            //Checking that the initial data returned from the data task hasn't returned nill
             guard (error == nil) else{displayError("Error with your Request!: \(error)") ; return}
             guard let data = data else{displayError("No Data returned!"); return}
             //We requested a JSON format which comes to us in a serialized byte format. We need to deserialize it.
@@ -110,7 +116,7 @@ class FlickerViewerController: UIViewController {
                 DispatchQueue.main.async {
                     self.flickrImageView.image = UIImage(data: imageData)
                     self.flickrTitleLabel.text = imageTitle
-                    self.setUIEnabled(true)
+                    self.isUIEnabled(true)
                 }
             }
             print(imageURLString)
