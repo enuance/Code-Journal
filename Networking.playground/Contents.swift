@@ -42,10 +42,15 @@ class NetRetrievalViewController: UIViewController{
     }
 }
 
-//Here's another example of a viewcontroller that accesses the Flickr API (using JSON) to bring back various photo's
-class FlickerViewerController: UIViewController {
 
-    //Outlets for updating the view with the images retrieved, their titles and a button to disable when working.
+//..............................................................................................
+//Here's another example of a ViewController that accesses the Flickr API (using JSON) to bring
+//back various photo's
+//..............................................................................................
+
+class FlickerViewerController: UIViewController {
+    //Outlets for updating the view with the images retrieved, their titles and a button to 
+    //disable when working.
     @IBOutlet weak var flickrImageView: UIImageView!
     @IBOutlet weak var flickrTitleLabel: UILabel!
     @IBOutlet weak var getImageButton: UIButton!
@@ -66,7 +71,8 @@ class FlickerViewerController: UIViewController {
     
     //Method for gets a random image from the Flickr API.
     func getImageFromFlickr() {
-        //Puts the Method parameter into an Array of tuples to be joined later into one final API method call
+        //Puts the Method parameter into an Array of tuples to be joined later into one final API 
+        //method call
         let methodParameters: [(String, Any)] = [
             ("method", /*...............*/"flickr.galleries.getPhotos"),
             ("api_key", /*..............*/"9215bde.........rest of your key here"),
@@ -75,14 +81,12 @@ class FlickerViewerController: UIViewController {
             ("format", /*...............*/"json"),
             ("nojsoncallback", /*.......*/"1")
         ]
-        
-        let urlString = "https://api.flickr.com/services/rest/" + myEscapedParameters(methodParameters)
+        let urlString = "https://api.flickr.com/services/rest/" + webSafeFlickrParameters(methodParameters)
         let url = URL(string: urlString)!
-        //Use NSMutableURL(_:) instead of URLRequest(_:)in order to change the request.httpMethod type from get to something
-        //else, otherwise default is "Get"
+        //Use NSMutableURL(_:) instead of URLRequest(_:)in order to change the request.httpMethod 
+        //type from "Get" to something else, otherwise default is "Get"
         let request = URLRequest(url: url)
-        
-        let task = URLSession.shared.dataTask(with: request){ (data, status, error) in //Closure begins here
+        let task = URLSession.shared.dataTask(with: request){ (data, status, error) in
             // Method for displaying errors thoughout the URL Session
             func displayError(_ error: String) {
                 print(error); print("URL at time of error: \(url)")
@@ -91,49 +95,66 @@ class FlickerViewerController: UIViewController {
             //Checking that the initial data returned from the data task hasn't returned nill
             guard (error == nil) else{displayError("Error with your Request!: \(error)") ; return}
             guard let data = data else{displayError("No Data returned!"); return}
-            //We requested a JSON format which comes to us in a serialized byte format. We need to deserialize it.
-            //JSON objects are bridgable to Foundation objects such as Arrays and Dicts after being deserialized. The incoming
-            //JSON object will be a Dictionary where the Keys are known to be Strings within the Flickr API, but the values
-            //can be AnyObject.
+            //We requested a JSON format which comes to us in a serialized byte format. We need to 
+            //deserialize it first in order to work with relatable objects that are bridgable to 
+            //Foundation objects such as Arrays and Dicts. The incoming JSON object will be a 
+            //Dictionary where the Keys are known to be Strings within the Flickr API, but the values
+            //can be AnyObject, so we should capture the JSON in a variable typed for that.
             let parsedResult: [String: AnyObject]!
+            //deserializing JSON requires it to be done in a Do/try/catch block because it "throws"(can 
+            //return an error).
             do{ parsedResult = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! [String : AnyObject]}
             catch{ displayError("Data: \(data) could not be parsed as JSON object!"); return}
-            
+            //Once deserialization is complete, we can travel through it by accessing keys or using 
+            //other indexing methods depending on the object. However, we do have to navigate
+            //cautiously using the guard statment because we aren't certain of what's comming to us.
             guard let photosDictionary = parsedResult["photos"] as? [String : AnyObject],
                 let photoArray = photosDictionary["photo"] as? [[String:AnyObject]]
                 else{displayError("Cannot find selected keys in parsed result!") ; return}
-            
+            //Creating a random indexing number based on the total photos in the array.
             let randomPhotoIndex = Int(arc4random_uniform(UInt32(photoArray.count)))
+            //Once we have the random photo we want we can then capture it's location and convert it
+            //to a data type, which can then be converted to a usable image type.
             let photoDictionary = photoArray[randomPhotoIndex]
-            
             guard let imageURLString = photoDictionary["url_m"] as? String,
+                //Grabing the image title as well to update the photo info in the view.
                 let imageTitle = photoDictionary["title"] as? String
                 else{ displayError("Cannot find key in photo dictionary!");return}
-            
             let imageURL = URL(string: imageURLString)
-            
+            //If the URL contains convertable data then we can proceed
             if let imageData = try? Data(contentsOf: imageURL!){
+                //Being that this data task has been working on a background thread we'll have to call up
+                //the main thread in order to update the view with our retrieved image, label, and UI
+                //enablement command.
                 DispatchQueue.main.async {
                     self.flickrImageView.image = UIImage(data: imageData)
                     self.flickrTitleLabel.text = imageTitle
                     self.isUIEnabled(true)
                 }
             }
-            print(imageURLString)
-            print(imageTitle)
         }
+        //The default for Data Tasks always begins in the suspended state. In order to execute the
+        //task, URLSession.shared.dataTask.resume(_:) must be called in order to complete the 
+        //assignement.
         task.resume()
     }
     
-    //Ordered using a tuple type parameter in an array
-    func myEscapedParameters(_ parameters: [(key: String, value: Any)]) -> String{
+    //Helper Method to filter and ensure a web safe String (URL) to pass to the API. The method
+    //takes an array of tuples containing a key and value pair and then filters and concatenates
+    //as an ASCII websafe string.
+    func webSafeFlickrParameters(_ parameters: [(key: String, value: Any)]) -> String{
         if parameters.isEmpty{return ""}else{
             var keyValuePairs = [String]()
+            //Goes through all the Key-Value pairs
             for keyValueTuple in parameters{
+                //Splits off the value to be converted into a websafe string.
                 let value = "\(keyValueTuple.value)"
                 let escapedValue = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+                //Stores all the key-Value pairs in the Key=Value (webSafe) format
                 keyValuePairs.append(keyValueTuple.key + "=" + "\(escapedValue!)")
             }
+            //Concatenates and returns all the Key-Value pairs in correctly formated String, ready to
+            //be conjoined with the base API Method call.
             return "?\(keyValuePairs.joined(separator: "&"))"
         }
     }
