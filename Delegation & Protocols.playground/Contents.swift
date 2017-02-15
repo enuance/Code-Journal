@@ -88,10 +88,6 @@ class MemeStyleController: UIViewController{
 //......................................................................
 
 
-
-
-
-
 /// MARK: Setting up a textField Delegates
 
 //Subscribe to the UITextFieldDelegate
