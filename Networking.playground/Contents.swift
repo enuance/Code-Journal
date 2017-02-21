@@ -159,6 +159,29 @@ class FlickerViewerController: UIViewController {
         }
     }
     
+    //Helper method that builds a URL by utilizing URLComponents(). This allows you to build
+    //a URL by passing the differring parts of the url to the URLComponents Type. After
+    //asignments have been made, the url property can be called and used as a properly
+    //formatted and web safe url.
+    
+    func webSafeURLFromParameters(_ parameters: [String : AnyObject], withPathExtension: String? = nil) -> URL{
+        
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.flickr.com"
+        components.path = "/services/rest/" + (withPathExtension ?? "")
+        components.queryItems = [URLQueryItem]()
+        
+        for (parameterName, parameterValue) in parameters{
+            let queryItem = URLQueryItem(name: parameterName, value: "\(parameterValue)")
+            components.queryItems!.append(queryItem)
+        }
+        
+        return components.url!
+    }
+    
+    
+    
     
 }
 
